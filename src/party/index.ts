@@ -13,9 +13,16 @@ export default class Server implements Party.Server {
     const player = {
       id: connection.id,
       userName: params.get("playerName") ?? getName(),
-      results: []
+      isCaptain: false,
+      team: this.gameState.players.length < 3 ? 'Team1' : 'Team2'
     }
     this.gameState.players.push(player);
+
+    if (player.team === 'Team1' && !this.gameState.players.find(p => p.team === 'Team1' && p.isCaptain)) {
+      player.isCaptain = true;
+    } else if (player.team === 'Team2' && !this.gameState.players.find(p => p.team === 'Team2' && p.isCaptain)) {
+      player.isCaptain = true;
+    }
 
     const envelope = JSON.stringify(this.gameState);
     this.party.broadcast(envelope);
@@ -27,20 +34,13 @@ export default class Server implements Party.Server {
   }
 
   resetGame(): GameState {
-    const buttonCount = randomArrayItem([1, 4, 9, 16]);
-    if (this.gameState?.players) {
-      this.gameState.players.forEach((p) => {
-        p.results = [];
-      });
-    }
     return {
       status: "Waiting",
-      buttons: shuffle(
-        Array(buttonCount)
-          .fill({})
-          .map((_, index) => ({ id: index + 1, lit: false }))
-      ),
-      players: this.gameState ? this.gameState.players : []
+      team1: [],
+      team2: [],
+      currentPick: 'Team1',
+      timer: 0,
+      players: []
     }
   }
 
@@ -66,7 +66,15 @@ export default class Server implements Party.Server {
           isReadyToBroadcast = true;
         }
         break;
-
+      case "pickClass":
+        const className = parcel.message.data;
+        if (this.gameState.currentPick === 'Team1') {
+          this.gameState.team1.push(className);
+        } else {
+          this.gameState.team2.push(className);
+        }
+        isReadyToBroadcast = true;
+        break;
       default:
         break;
     }

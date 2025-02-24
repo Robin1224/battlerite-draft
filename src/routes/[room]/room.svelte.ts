@@ -17,9 +17,7 @@ class Room {
   join(room: string, name: string) {
     this.socket = new PartySocket({
       // @ts-ignore
-      host: dev || window.isUnderTest
-        ? 'http://192.168.1.8:1999'
-        : `https://sveltekit-partykit-starter-party.lbiddiscombe.partykit.dev`,
+      host: "http://0.0.0.0:1999",
       room,
       query: {
         playerName: name
@@ -67,6 +65,50 @@ class Room {
 
   resetGame() {
     this.emitPartyMessage('resetGame');
+  }
+
+  startDraft() {
+    this.gameState.status = 'Drafting';
+    this.gameState.currentPick = 'Team1';
+    this.gameState.timer = 30;
+    this.emitPartyMessage('syncGameState');
+    this.startTimer();
+  }
+
+  startTimer() {
+    const timerInterval = setInterval(() => {
+      this.gameState.timer--;
+      this.emitPartyMessage('syncGameState');
+      if (this.gameState.timer === 0) {
+        clearInterval(timerInterval);
+        this.switchTeam();
+      }
+    }, 1000);
+  }
+
+  switchTeam() {
+    if (this.gameState.currentPick === 'Team1') {
+      this.gameState.currentPick = 'Team2';
+    } else {
+      this.gameState.currentPick = 'Team1';
+    }
+    this.gameState.timer = 30;
+    this.emitPartyMessage('syncGameState');
+    this.startTimer();
+  }
+
+  pickClass(className: string) {
+    if (this.gameState.currentPick === 'Team1') {
+      this.gameState.team1.push(className);
+    } else {
+      this.gameState.team2.push(className);
+    }
+    this.emitPartyMessage('pickClass', className);
+    if (this.gameState.team1.length + this.gameState.team2.length === 6) {
+      this.gameState.status = 'Results';
+    } else {
+      this.switchTeam();
+    }
   }
 
 }
